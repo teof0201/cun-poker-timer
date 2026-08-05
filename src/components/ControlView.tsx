@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTournamentSocket } from "@/hooks/useTournamentSocket";
 import { useTimerSnapshot } from "@/hooks/useTimerSnapshot";
 import { formatClock } from "@/lib/timerEngine";
@@ -13,6 +14,7 @@ function formatBlinds(level: BlindLevel) {
 }
 
 export function ControlView({ tournamentId }: { tournamentId: string }) {
+  const router = useRouter();
   const { tournament, status, error, sendAction, refresh } = useTournamentSocket(
     tournamentId,
     "controller",
@@ -37,6 +39,12 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
       sendAction({ type: "next" });
     }
   }, [snapshot, tournament, sendAction]);
+
+  useEffect(() => {
+    if (tournament?.session.status === "finished") {
+      router.push(`/tournament/${tournamentId}/results`);
+    }
+  }, [tournament?.session.status, tournamentId, router]);
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {

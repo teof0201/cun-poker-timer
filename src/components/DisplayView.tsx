@@ -1,13 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTournamentSocket } from "@/hooks/useTournamentSocket";
 import { useTimerSnapshot } from "@/hooks/useTimerSnapshot";
 import { formatClock } from "@/lib/timerEngine";
 import { calculatePrizePool } from "@/lib/prizeCalculator";
 
 export function DisplayView({ tournamentId }: { tournamentId: string }) {
+  const router = useRouter();
   const { tournament, status, error } = useTournamentSocket(tournamentId, "display");
   const snapshot = useTimerSnapshot(tournament);
+
+  useEffect(() => {
+    if (tournament?.session.status === "finished") {
+      router.push(`/tournament/${tournamentId}/results`);
+    }
+  }, [tournament?.session.status, tournamentId, router]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white">

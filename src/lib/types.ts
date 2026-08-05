@@ -20,6 +20,10 @@ export type Player = {
   status: PlayerStatus;
   rebuys: number;
   addOns: number;
+  /** 1-indexed level the player was last eliminated at; null while active. */
+  bustedLevel: number | null;
+  /** epoch ms of the last elimination; used to order finishers. null while active. */
+  bustedAt: number | null;
 };
 
 export type TournamentStatus = "idle" | "running" | "paused" | "finished";
@@ -33,6 +37,10 @@ export type SessionState = {
   remainingMsAtPause: number | null;
   players: Player[];
   updatedAt: number;
+  /** epoch ms when the tournament was first started; null until then. */
+  tournamentStartedAt: number | null;
+  /** epoch ms when the tournament finished; null until then. */
+  finishedAt: number | null;
 };
 
 export type TournamentConfig = {
@@ -68,6 +76,8 @@ export function createInitialSession(): SessionState {
     remainingMsAtPause: null,
     players: [],
     updatedAt: Date.now(),
+    tournamentStartedAt: null,
+    finishedAt: null,
   };
 }
 

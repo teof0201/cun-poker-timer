@@ -33,18 +33,34 @@ export function reduceSession(
         status: "active",
         rebuys: 0,
         addOns: 0,
+        bustedLevel: null,
+        bustedAt: null,
       };
       return { ...session, players: [...session.players, player], updatedAt: now };
     }
 
-    case "eliminatePlayer":
+    case "eliminatePlayer": {
+      const players = session.players.map((p) =>
+        p.id === action.playerId
+          ? { ...p, status: "eliminated" as const, bustedLevel: session.levelIndex + 1, bustedAt: now }
+          : p,
+      );
+
+      // Heads-up down to one survivor ends the tournament outright — there's
+      // no one left to play against, regardless of the rebuy window.
+      const activeCount = players.filter((p) => p.status === "active").length;
+      const justFinished = players.length >= 2 && activeCount === 1;
+
       return {
         ...session,
-        players: session.players.map((p) =>
-          p.id === action.playerId ? { ...p, status: "eliminated" } : p,
-        ),
+        players,
         updatedAt: now,
+        status: justFinished ? "finished" : session.status,
+        levelStartedAt: justFinished ? null : session.levelStartedAt,
+        remainingMsAtPause: justFinished ? null : session.remainingMsAtPause,
+        finishedAt: justFinished ? now : session.finishedAt,
       };
+    }
 
     case "removePlayer":
       return {
@@ -65,7 +81,7 @@ export function reduceSession(
         ...session,
         players: session.players.map((p) =>
           p.id === action.playerId
-            ? { ...p, status: "active", rebuys: p.rebuys + 1 }
+            ? { ...p, status: "active", rebuys: p.rebuys + 1, bustedLevel: null, bustedAt: null }
             : p,
         ),
         updatedAt: now,

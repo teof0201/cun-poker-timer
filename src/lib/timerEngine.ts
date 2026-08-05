@@ -103,6 +103,8 @@ export function applyAction(
         levelStartedAt: now,
         remainingMsAtPause: null,
         updatedAt: now,
+        tournamentStartedAt: now,
+        finishedAt: null,
       };
     }
     case "pause": {
@@ -138,6 +140,7 @@ export function applyAction(
           levelStartedAt: null,
           remainingMsAtPause: null,
           updatedAt: now,
+          finishedAt: now,
         };
       }
       return {
@@ -171,6 +174,8 @@ export function applyAction(
         levelStartedAt: null,
         remainingMsAtPause: null,
         updatedAt: now,
+        tournamentStartedAt: null,
+        finishedAt: null,
       };
     }
     default:
