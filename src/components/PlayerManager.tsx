@@ -77,11 +77,16 @@ export function PlayerManager({
                   Bust
                 </SmallButton>
               ) : (
-                canRebuy(p.rebuys) && (
-                  <SmallButton onClick={() => sendAction({ type: "rebuyPlayer", playerId: p.id })}>
-                    Rebuy
+                <>
+                  {canRebuy(p.rebuys) && (
+                    <SmallButton onClick={() => sendAction({ type: "rebuyPlayer", playerId: p.id })}>
+                      Rebuy
+                    </SmallButton>
+                  )}
+                  <SmallButton onClick={() => sendAction({ type: "undoBust", playerId: p.id })}>
+                    Undo
                   </SmallButton>
-                )
+                </>
               )}
               <SmallButton onClick={() => sendAction({ type: "removePlayer", playerId: p.id })}>
                 Xóa

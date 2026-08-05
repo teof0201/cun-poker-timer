@@ -3,11 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { toPublicTournament } from "@/lib/serialize";
 import { computeTournamentResults, formatDuration } from "@/lib/tournamentResults";
+import { formatMoney } from "@/lib/formatMoney";
 import { PrintButton } from "@/components/PrintButton";
-
-function formatMoney(amount: number) {
-  return `${Math.round(amount).toLocaleString("vi-VN")} đ`;
-}
 
 function formatFinishedAt(ms: number) {
   return new Date(ms).toLocaleString("vi-VN", {

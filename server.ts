@@ -9,7 +9,8 @@ import { parseCookieHeader } from "./src/lib/parseCookies";
 import { canAccessTournament } from "./src/lib/tournamentAccessCore";
 import { toPublicTournament } from "./src/lib/serialize";
 import { reduceSession } from "./src/lib/sessionReducer";
-import type { ControlAction } from "./src/lib/types";
+import { catchUpSession } from "./src/lib/timerEngine";
+import type { BlindLevel, ControlAction, SessionState } from "./src/lib/types";
 import type {
   ClientToServerEvents,
   JoinPayload,
@@ -25,6 +26,8 @@ type SocketData = {
   tournamentId?: string;
   role?: JoinPayload["role"];
 };
+
+const CATCH_UP_INTERVAL_MS = 1000;
 
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
@@ -45,7 +48,7 @@ app.prepare().then(() => {
 
     socket.on("join", async (payload, ack) => {
       try {
-        const tournament = await prisma.tournament.findUnique({
+        let tournament = await prisma.tournament.findUnique({
           where: { id: payload.tournamentId },
         });
         if (!tournament) {
@@ -55,6 +58,18 @@ app.prepare().then(() => {
         if (payload.role === "controller" && !canAccessTournament(tournament, auth, anonId)) {
           ack?.({ ok: false, error: "Không có quyền điều khiển giải đấu này" });
           return;
+        }
+
+        // Catch the clock up in case it wasn't watched while a level expired
+        // (backgrounded tab, sleeping screen, brief outage) before sending state.
+        const levels: BlindLevel[] = JSON.parse(tournament.levels);
+        const session: SessionState = JSON.parse(tournament.session);
+        const caughtUp = catchUpSession(levels, session, Date.now());
+        if (caughtUp !== session) {
+          tournament = await prisma.tournament.update({
+            where: { id: payload.tournamentId },
+            data: { session: JSON.stringify(caughtUp) },
+          });
         }
 
         socket.data.tournamentId = payload.tournamentId;
@@ -91,7 +106,8 @@ app.prepare().then(() => {
         }
 
         const levels = JSON.parse(tournament.levels);
-        const session = JSON.parse(tournament.session);
+        const now = Date.now();
+        const session = catchUpSession(levels, JSON.parse(tournament.session), now);
         const nextSession = reduceSession(
           {
             levels,
@@ -100,7 +116,7 @@ app.prepare().then(() => {
           },
           session,
           payload.action as ControlAction,
-          Date.now(),
+          now,
         );
 
         const updated = await prisma.tournament.update({
@@ -139,6 +155,39 @@ app.prepare().then(() => {
       }
     });
   });
+
+  // Single source of truth for level advancement: sweep every running
+  // tournament on a fixed clock so blinds always move forward on time, even
+  // if nobody's browser tab is open/foregrounded to notice.
+  setInterval(async () => {
+    try {
+      const rows = await prisma.tournament.findMany();
+      const now = Date.now();
+      for (const row of rows) {
+        let session: SessionState;
+        try {
+          session = JSON.parse(row.session);
+        } catch {
+          continue;
+        }
+        if (session.status !== "running") continue;
+
+        const levels: BlindLevel[] = JSON.parse(row.levels);
+        const caughtUp = catchUpSession(levels, session, now);
+        if (caughtUp.levelIndex === session.levelIndex && caughtUp.status === session.status) {
+          continue;
+        }
+
+        const updated = await prisma.tournament.update({
+          where: { id: row.id },
+          data: { session: JSON.stringify(caughtUp) },
+        });
+        io.to(`tournament:${row.id}`).emit("state", toPublicTournament(updated));
+      }
+    } catch (err) {
+      console.error("[catch-up sweep] error", err);
+    }
+  }, CATCH_UP_INTERVAL_MS);
 
   httpServer.listen(port, () => {
     console.log(

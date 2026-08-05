@@ -88,7 +88,9 @@ export type ControlAction =
   | { type: "next" }
   | { type: "prev" }
   | { type: "reset" }
+  | { type: "setRemainingTime"; remainingSeconds: number }
   | { type: "addPlayer"; name?: string }
   | { type: "eliminatePlayer"; playerId: string }
   | { type: "removePlayer"; playerId: string }
-  | { type: "rebuyPlayer"; playerId: string };
+  | { type: "rebuyPlayer"; playerId: string }
+  | { type: "undoBust"; playerId: string };

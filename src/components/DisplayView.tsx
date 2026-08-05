@@ -4,13 +4,17 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTournamentSocket } from "@/hooks/useTournamentSocket";
 import { useTimerSnapshot } from "@/hooks/useTimerSnapshot";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { formatClock } from "@/lib/timerEngine";
 import { calculatePrizePool } from "@/lib/prizeCalculator";
+import { formatMoney } from "@/lib/formatMoney";
 
 export function DisplayView({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
   const { tournament, status, error } = useTournamentSocket(tournamentId, "display");
   const snapshot = useTimerSnapshot(tournament);
+
+  useWakeLock();
 
   useEffect(() => {
     if (tournament?.session.status === "finished") {
@@ -38,12 +42,12 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
 
           {snapshot.level && !snapshot.level.isBreak && (
             <p className="mt-6 text-4xl">
-              {snapshot.level.smallBlind.toLocaleString("vi-VN")} /{" "}
-              {snapshot.level.bigBlind.toLocaleString("vi-VN")}
+              {snapshot.level.smallBlind.toLocaleString("en-US")} /{" "}
+              {snapshot.level.bigBlind.toLocaleString("en-US")}
               {snapshot.level.ante > 0 && (
                 <span className="text-zinc-400">
                   {" "}
-                  · Ante {snapshot.level.ante.toLocaleString("vi-VN")}
+                  · Ante {snapshot.level.ante.toLocaleString("en-US")}
                 </span>
               )}
             </p>
@@ -53,7 +57,7 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
               Tiếp theo:{" "}
               {snapshot.nextLevel.isBreak
                 ? "Giải lao"
-                : `${snapshot.nextLevel.smallBlind.toLocaleString("vi-VN")} / ${snapshot.nextLevel.bigBlind.toLocaleString("vi-VN")}`}
+                : `${snapshot.nextLevel.smallBlind.toLocaleString("en-US")} / ${snapshot.nextLevel.bigBlind.toLocaleString("en-US")}`}
             </p>
           )}
 
@@ -73,13 +77,14 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
               <span>
                 Quỹ giải thưởng:{" "}
                 <strong className="text-white">
-                  {calculatePrizePool(
-                    tournament.session.players.length,
-                    tournament.buyIn,
-                    tournament.session.players.reduce((sum, p) => sum + p.rebuys, 0),
-                    tournament.rebuyAmount,
-                  ).toLocaleString("vi-VN")}{" "}
-                  đ
+                  {formatMoney(
+                    calculatePrizePool(
+                      tournament.session.players.length,
+                      tournament.buyIn,
+                      tournament.session.players.reduce((sum, p) => sum + p.rebuys, 0),
+                      tournament.rebuyAmount,
+                    ),
+                  )}
                 </strong>
               </span>
             )}
@@ -87,10 +92,7 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
               <span>
                 Bounty:{" "}
                 <strong className="text-white">
-                  {(tournament.bountyAmount * tournament.session.players.length).toLocaleString(
-                    "vi-VN",
-                  )}{" "}
-                  đ
+                  {formatMoney(tournament.bountyAmount * tournament.session.players.length)}
                 </strong>
               </span>
             )}

@@ -23,6 +23,7 @@ export function reduceSession(
     case "next":
     case "prev":
     case "reset":
+    case "setRemainingTime":
       return applyTimingAction(levels, session, action, now);
 
     case "addPlayer": {
@@ -51,13 +52,15 @@ export function reduceSession(
       const activeCount = players.filter((p) => p.status === "active").length;
       const justFinished = players.length >= 2 && activeCount === 1;
 
+      // Deliberately leave levelStartedAt/remainingMsAtPause untouched here:
+      // "finished" always renders as a frozen clock regardless of their value
+      // (see computeSnapshot), but keeping them intact lets undoBust cleanly
+      // resume the clock if this elimination turns out to have been a misclick.
       return {
         ...session,
         players,
         updatedAt: now,
         status: justFinished ? "finished" : session.status,
-        levelStartedAt: justFinished ? null : session.levelStartedAt,
-        remainingMsAtPause: justFinished ? null : session.remainingMsAtPause,
         finishedAt: justFinished ? now : session.finishedAt,
       };
     }
@@ -85,6 +88,31 @@ export function reduceSession(
             : p,
         ),
         updatedAt: now,
+      };
+    }
+
+    case "undoBust": {
+      // Reverses a mistaken bust: reactivate with no rebuy charged, unlike
+      // rebuyPlayer which represents a genuine (paid) re-entry.
+      const player = session.players.find((p) => p.id === action.playerId);
+      if (!player || player.status !== "eliminated") return session;
+
+      const players = session.players.map((p) =>
+        p.id === action.playerId
+          ? { ...p, status: "active" as const, bustedLevel: null, bustedAt: null }
+          : p,
+      );
+
+      // If that bust is what ended the tournament, undoing it un-ends it too.
+      const activeCount = players.filter((p) => p.status === "active").length;
+      const revives = session.status === "finished" && activeCount >= 2;
+
+      return {
+        ...session,
+        players,
+        updatedAt: now,
+        status: revives ? "running" : session.status,
+        finishedAt: revives ? null : session.finishedAt,
       };
     }
 

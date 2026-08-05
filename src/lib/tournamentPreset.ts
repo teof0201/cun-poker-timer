@@ -27,7 +27,7 @@ const FIFTEEN_MIN = 15 * 60;
 export const DEFAULT_TOURNAMENT_PRESET: TournamentPreset = {
   name: "Giải đấu Poker",
   startingStack: 200,
-  buyIn: 50000,
+  buyIn: 50,
   freeroll: false,
   estimatedPlayers: 9,
   levels: [
@@ -50,7 +50,7 @@ export const DEFAULT_TOURNAMENT_PRESET: TournamentPreset = {
   allowRebuys: true,
   maxRebuys: 0,
   rebuyChips: 200,
-  rebuyAmount: 50000,
+  rebuyAmount: 50,
   rebuyUntilLevel: 5,
   trackPlayers: true,
   bountyAmount: 0,

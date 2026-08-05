@@ -9,6 +9,7 @@ import { TournamentSettingsForm, type TournamentSettingsValue } from "./Tourname
 import { generateBlindStructure } from "@/lib/blindCalculator";
 import { generatePrizeTiers, suggestedPaidPlaces } from "@/lib/prizeCalculator";
 import { saveLastTournamentSettings } from "@/lib/lastTournamentSettings";
+import { computeSnapshot } from "@/lib/timerEngine";
 
 function tournamentToSettingsValue(t: TournamentPublic): TournamentSettingsValue {
   return {
@@ -169,6 +170,8 @@ export function SettingsDrawer({
           </button>
         </div>
 
+        <TimeAdjustSlider tournament={tournament} sendAction={sendAction} />
+
         <div className="mb-4 flex gap-1 border-b border-black/10 dark:border-white/10">
           <TabButton active={tab === "players"} onClick={() => setTab("players")}>
             Manage Player
@@ -198,6 +201,61 @@ export function SettingsDrawer({
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function TimeAdjustSlider({
+  tournament,
+  sendAction,
+}: {
+  tournament: TournamentPublic;
+  sendAction: (action: ControlAction) => void;
+}) {
+  const level = tournament.levels[tournament.session.levelIndex];
+  const maxMinutes = level ? Math.max(1, Math.round(level.durationSeconds / 60)) : 15;
+
+  const [minutes, setMinutes] = useState(() => {
+    const remainingMinutes = Math.round(
+      computeSnapshot(tournament.levels, tournament.session, Date.now()).remainingMs / 60000,
+    );
+    return Math.min(maxMinutes, Math.max(0, remainingMinutes));
+  });
+
+  const canApply = tournament.session.status === "running" || tournament.session.status === "paused";
+
+  function apply() {
+    if (!canApply) return;
+    sendAction({ type: "setRemainingTime", remainingSeconds: minutes * 60 });
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-black/10 p-3 dark:border-white/10">
+      <div className="mb-1 flex items-center justify-between text-sm font-medium">
+        <span>Chỉnh giờ level hiện tại</span>
+        <span className="text-emerald-500">{minutes} phút</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={maxMinutes}
+        step={1}
+        value={minutes}
+        onChange={(e) => setMinutes(Number(e.target.value))}
+        className="w-full"
+        disabled={!canApply}
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-zinc-500">0 → {maxMinutes} phút</span>
+        <button
+          type="button"
+          onClick={apply}
+          disabled={!canApply}
+          className="rounded bg-emerald-500 px-3 py-1 text-xs font-medium text-black hover:bg-emerald-400 disabled:opacity-40"
+        >
+          Áp dụng
+        </button>
       </div>
     </div>
   );

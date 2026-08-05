@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getOwnerContext } from "@/lib/tournamentAccess";
 import { toPublicTournament } from "@/lib/serialize";
 import { DeleteTournamentButton } from "@/components/DeleteTournamentButton";
+import { formatMoney } from "@/lib/formatMoney";
 
 export default async function TournamentsPage() {
   const { auth, anonId } = await getOwnerContext();
@@ -49,7 +50,7 @@ export default async function TournamentsPage() {
               <div>
                 <p className="font-semibold">{t.name}</p>
                 <p className="text-sm text-zinc-500">
-                  {t.levels.length} levels · Buy-in {t.buyIn.toLocaleString("vi-VN")} đ ·{" "}
+                  {t.levels.length} levels · Buy-in {formatMoney(t.buyIn)} ·{" "}
                   {t.session.players.length} người chơi
                 </p>
               </div>

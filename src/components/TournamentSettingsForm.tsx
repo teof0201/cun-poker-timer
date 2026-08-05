@@ -2,6 +2,7 @@
 
 import { BlindStructureEditor, type EditableLevel } from "@/components/BlindStructureEditor";
 import { PrizeStructureEditor, type EditablePrizeTier } from "@/components/PrizeStructureEditor";
+import { formatMoney } from "@/lib/formatMoney";
 
 export type TournamentSettingsValue = {
   name: string;
@@ -62,7 +63,7 @@ export function TournamentSettingsForm({
               className="input"
             />
           </Field>
-          <Field label="Buy-in (đ)">
+          <Field label="Buy-in ($)">
             <input
               type="number"
               min={0}
@@ -134,7 +135,7 @@ export function TournamentSettingsForm({
                 className="input"
               />
             </Field>
-            <Field label="Reentry Price (đ)">
+            <Field label="Reentry Price ($)">
               <input
                 type="number"
                 min={0}
@@ -163,7 +164,7 @@ export function TournamentSettingsForm({
         </ul>
 
         <div className="mt-4">
-          <Field label="Bounty mỗi người chơi (đ, để 0 nếu không có bounty)">
+          <Field label="Bounty mỗi người chơi ($, để 0 nếu không có bounty)">
             <input
               type="number"
               min={0}
@@ -199,16 +200,14 @@ export function TournamentSettingsForm({
               Ước tính dựa trên buy-in và số người chơi dự kiến.
             </p>
             <p className="mb-3 text-sm">
-              Total Prize Pool:{" "}
-              <span className="font-semibold">{previewPool.toLocaleString("vi-VN")} đ</span>
+              Total Prize Pool: <span className="font-semibold">{formatMoney(previewPool)}</span>
             </p>
             <ul className="space-y-1 text-sm">
               {value.prizeTiers.map((tier) => (
                 <li key={tier.key} className="flex justify-between">
                   <span>Place {tier.place}</span>
                   <span>
-                    {tier.percentage}% ·{" "}
-                    {Math.round((previewPool * tier.percentage) / 100).toLocaleString("vi-VN")} đ
+                    {tier.percentage}% · {formatMoney((previewPool * tier.percentage) / 100)}
                   </span>
                 </li>
               ))}

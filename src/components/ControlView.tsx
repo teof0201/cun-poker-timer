@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTournamentSocket } from "@/hooks/useTournamentSocket";
 import { useTimerSnapshot } from "@/hooks/useTimerSnapshot";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { formatClock } from "@/lib/timerEngine";
 import { calculatePrizePool } from "@/lib/prizeCalculator";
+import { formatMoney } from "@/lib/formatMoney";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import type { BlindLevel } from "@/lib/types";
 
 function formatBlinds(level: BlindLevel) {
-  return `${level.smallBlind.toLocaleString("vi-VN")} / ${level.bigBlind.toLocaleString("vi-VN")} / ${level.ante.toLocaleString("vi-VN")}`;
+  return `${level.smallBlind.toLocaleString("en-US")} / ${level.bigBlind.toLocaleString("en-US")} / ${level.ante.toLocaleString("en-US")}`;
 }
 
 export function ControlView({ tournamentId }: { tournamentId: string }) {
@@ -22,23 +24,18 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
   const snapshot = useTimerSnapshot(tournament);
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const autoAdvancedForLevel = useRef<number | null>(null);
   const displayUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/tournament/${tournamentId}/display`
       : "";
 
-  useEffect(() => {
-    if (!snapshot || !tournament) return;
-    if (
-      snapshot.status === "running" &&
-      snapshot.remainingMs <= 0 &&
-      autoAdvancedForLevel.current !== tournament.session.levelIndex
-    ) {
-      autoAdvancedForLevel.current = tournament.session.levelIndex;
-      sendAction({ type: "next" });
-    }
-  }, [snapshot, tournament, sendAction]);
+  useWakeLock();
+
+  // Level advancement on timeout is decided by the server (see server.ts's
+  // catch-up sweep) — the client only renders whatever state it's given.
+  // Do not re-add a client-side "remainingMs <= 0 -> send next" effect here:
+  // a backgrounded/throttled tab can't be trusted to fire it reliably, and a
+  // second source of truth racing the server caused levels to double-skip.
 
   useEffect(() => {
     if (tournament?.session.status === "finished") {
@@ -106,47 +103,48 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
         </div>
       </div>
 
-      {/* 3-column main info */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-y-auto px-8 pt-4 sm:grid-cols-3">
+      {/* 3-column main info — center column carries the most weight */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-center gap-6 px-8 pt-4 sm:grid-cols-[1fr_1.4fr_1fr]">
         {/* Left: prize pool */}
-        <div className="text-left">
+        <div className="text-left text-sm">
           {tournament.freeroll ? (
-            <h2 className="text-3xl font-bold">Freeroll</h2>
+            <h2 className="text-xl font-bold">Freeroll</h2>
           ) : (
-            <h2 className="text-3xl font-bold">
-              Prize pool {prizePool.toLocaleString("vi-VN")} đ
-            </h2>
+            <h2 className="text-xl font-bold">Prize pool {formatMoney(prizePool)}</h2>
           )}
-          <ul className="mt-3 space-y-1 text-sm font-semibold">
+          <ul className="mt-3 space-y-1 font-semibold">
             {tournament.prizeTiers.map((tier) => (
-              <li key={tier.place} className="flex justify-between gap-6">
-                <span>Hạng {tier.place}</span>
-                <span>{Math.round((prizePool * tier.percentage) / 100).toLocaleString("vi-VN")} đ</span>
+              <li key={tier.place} className="flex gap-2">
+                <span>Hạng {tier.place}:</span>
+                <span>{formatMoney((prizePool * tier.percentage) / 100)}</span>
               </li>
             ))}
           </ul>
           {tournament.bountyAmount > 0 && (
-            <p className="mt-4 text-sm text-zinc-400">
-              Bounty: {(tournament.bountyAmount * tournament.session.players.length).toLocaleString("vi-VN")} đ
-              <span className="text-zinc-500"> ({tournament.bountyAmount.toLocaleString("vi-VN")} đ/người)</span>
+            <p className="mt-4 text-xs text-zinc-400">
+              Bounty: {formatMoney(tournament.bountyAmount * tournament.session.players.length)}
+              <span className="text-zinc-500">
+                {" "}
+                ({formatMoney(tournament.bountyAmount)}/người)
+              </span>
             </p>
           )}
         </div>
 
-        {/* Center: clock */}
+        {/* Center: clock — the focal point of the screen */}
         <div className="flex flex-col items-center text-center">
-          <p className="text-2xl font-bold">{tournament.name}</p>
-          <p className="mt-2 text-xl font-semibold">
+          <p className="text-2xl font-bold sm:text-3xl">{tournament.name}</p>
+          <p className="mt-2 text-xl font-semibold sm:text-2xl">
             {snapshot.level?.isBreak ? "Giải lao" : `Level ${tournament.session.levelIndex + 1}`}
           </p>
-          <p className="font-mono text-6xl font-bold tabular-nums sm:text-7xl lg:text-8xl">
+          <p className="font-mono text-7xl font-bold tabular-nums sm:text-8xl lg:text-9xl">
             {formatClock(snapshot.remainingMs)}
           </p>
 
           {snapshot.level && !snapshot.level.isBreak && (
             <>
-              <p className="mt-2 text-lg text-zinc-400">Blinds</p>
-              <p className="text-2xl font-bold sm:text-3xl lg:text-4xl">
+              <p className="mt-2 text-lg text-zinc-400 sm:text-xl">Blinds</p>
+              <p className="text-3xl font-bold sm:text-4xl lg:text-5xl">
                 {formatBlinds(snapshot.level)}
               </p>
             </>
@@ -155,7 +153,7 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
           {snapshot.nextLevel && (
             <>
               <p className="mt-4 text-zinc-400">Coming up</p>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold sm:text-3xl">
                 {snapshot.nextLevel.isBreak ? "Giải lao" : formatBlinds(snapshot.nextLevel)}
               </p>
             </>
@@ -170,22 +168,22 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
         </div>
 
         {/* Right: entries + buy-ins */}
-        <div className="text-left sm:text-right">
-          <h2 className="text-2xl font-bold">Entries</h2>
+        <div className="text-left text-sm sm:text-right">
+          <h2 className="text-xl font-bold">Entries</h2>
           <p className="mt-2">Total Entries: {tournament.session.players.length}</p>
           <p>Players Left: {activePlayers.length}</p>
           <p>Rebuys: {totalRebuys}</p>
 
-          <h2 className="mt-6 text-2xl font-bold">Buy-ins & Re-Entry</h2>
+          <h2 className="mt-6 text-xl font-bold">Buy-ins & Re-Entry</h2>
           <p className="mt-2">
-            Buy-In: {tournament.freeroll ? "Freeroll" : `${tournament.buyIn.toLocaleString("vi-VN")} đ`}
+            Buy-In: {tournament.freeroll ? "Freeroll" : formatMoney(tournament.buyIn)}
           </p>
-          <p>Starting Stack: {tournament.startingStack.toLocaleString("vi-VN")}</p>
+          <p>Starting Stack: {tournament.startingStack.toLocaleString("en-US")}</p>
           <p>
             Re-Entry until Level:{" "}
             {tournament.rebuyUntilLevel > 0 ? tournament.rebuyUntilLevel : "Không giới hạn"}
           </p>
-          <p>Average Stacks: {averageStack.toLocaleString("vi-VN")}</p>
+          <p>Average Stacks: {averageStack.toLocaleString("en-US")}</p>
         </div>
       </div>
 

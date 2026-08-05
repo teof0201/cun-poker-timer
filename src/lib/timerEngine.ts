@@ -70,6 +70,56 @@ export function computeSnapshot(
   };
 }
 
+/**
+ * Advances a running session through every level that has fully elapsed by
+ * `now`, carrying the overflow time into the next level so a tournament that
+ * goes unwatched for a while (backgrounded tab, screen sleep, brief outage)
+ * lands on the *correct* level instead of just +1. Safe to call repeatedly —
+ * it's a no-op once nothing is expired. This is the single source of truth
+ * for level advancement; clients only render, they never decide to advance.
+ */
+export function catchUpSession(
+  levels: BlindLevel[],
+  session: SessionState,
+  now: number,
+): SessionState {
+  if (session.status !== "running" || session.levelStartedAt === null) return session;
+
+  let current = session;
+  for (let i = 0; i <= levels.length; i++) {
+    const level = levels[current.levelIndex];
+    if (!level) {
+      return {
+        ...current,
+        status: "finished",
+        levelStartedAt: null,
+        remainingMsAtPause: null,
+        finishedAt: current.finishedAt ?? now,
+        updatedAt: now,
+      };
+    }
+
+    const totalMs = level.durationSeconds * 1000;
+    const elapsed = now - (current.levelStartedAt ?? now);
+    if (elapsed < totalMs) return current;
+
+    const overflow = elapsed - totalMs;
+    const nextIndex = current.levelIndex + 1;
+    if (nextIndex >= levels.length) {
+      return {
+        ...current,
+        status: "finished",
+        levelStartedAt: null,
+        remainingMsAtPause: null,
+        finishedAt: now,
+        updatedAt: now,
+      };
+    }
+    current = { ...current, levelIndex: nextIndex, levelStartedAt: now - overflow, updatedAt: now };
+  }
+  return current;
+}
+
 export function formatClock(ms: number): string {
   const totalSeconds = Math.ceil(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -91,7 +141,8 @@ export function applyAction(
     | { type: "resume" }
     | { type: "next" }
     | { type: "prev" }
-    | { type: "reset" },
+    | { type: "reset" }
+    | { type: "setRemainingTime"; remainingSeconds: number },
   now: number,
 ): SessionState {
   switch (action.type) {
@@ -177,6 +228,19 @@ export function applyAction(
         tournamentStartedAt: null,
         finishedAt: null,
       };
+    }
+    case "setRemainingTime": {
+      const level = levels[session.levelIndex];
+      const totalMs = level ? level.durationSeconds * 1000 : 0;
+      const remainingMs = Math.max(0, Math.min(totalMs, action.remainingSeconds * 1000));
+
+      if (session.status === "paused") {
+        return { ...session, remainingMsAtPause: remainingMs, updatedAt: now };
+      }
+      if (session.status === "running") {
+        return { ...session, levelStartedAt: now - (totalMs - remainingMs), updatedAt: now };
+      }
+      return session;
     }
     default:
       return session;
