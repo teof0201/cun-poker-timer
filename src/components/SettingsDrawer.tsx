@@ -8,6 +8,7 @@ import { newPrizeKey } from "./PrizeStructureEditor";
 import { TournamentSettingsForm, type TournamentSettingsValue } from "./TournamentSettingsForm";
 import { generateBlindStructure } from "@/lib/blindCalculator";
 import { generatePrizeTiers, suggestedPaidPlaces } from "@/lib/prizeCalculator";
+import { saveLastTournamentSettings } from "@/lib/lastTournamentSettings";
 
 function tournamentToSettingsValue(t: TournamentPublic): TournamentSettingsValue {
   return {
@@ -125,6 +126,29 @@ export function SettingsDrawer({
       return;
     }
     setSaving(false);
+    saveLastTournamentSettings({
+      name: settings.name,
+      startingStack: settings.startingStack,
+      buyIn: settings.buyIn,
+      freeroll: settings.freeroll,
+      estimatedPlayers: settings.estimatedPlayers,
+      levels: settings.levels.map((l, index) => ({
+        index,
+        smallBlind: l.smallBlind,
+        bigBlind: l.bigBlind,
+        ante: l.ante,
+        durationSeconds: l.durationMinutes * 60,
+        isBreak: l.isBreak,
+      })),
+      prizeTiers: settings.prizeTiers.map((t) => ({ place: t.place, percentage: t.percentage })),
+      allowRebuys: settings.allowRebuys,
+      maxRebuys: settings.maxRebuys,
+      rebuyChips: settings.rebuyChips,
+      rebuyAmount: settings.rebuyAmount,
+      rebuyUntilLevel: settings.rebuyUntilLevel,
+      trackPlayers: settings.trackPlayers,
+      bountyAmount: settings.bountyAmount,
+    });
     onSaved();
     onClose();
   }

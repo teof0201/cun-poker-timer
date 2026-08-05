@@ -1,67 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { newLevelKey, type EditableLevel } from "@/components/BlindStructureEditor";
-import { newPrizeKey, type EditablePrizeTier } from "@/components/PrizeStructureEditor";
+import { newLevelKey } from "@/components/BlindStructureEditor";
+import { newPrizeKey } from "@/components/PrizeStructureEditor";
 import {
   TournamentSettingsForm,
   type TournamentSettingsValue,
 } from "@/components/TournamentSettingsForm";
 import { generateBlindStructure } from "@/lib/blindCalculator";
 import { generatePrizeTiers, suggestedPaidPlaces } from "@/lib/prizeCalculator";
+import { DEFAULT_TOURNAMENT_PRESET, type TournamentPreset } from "@/lib/tournamentPreset";
+import { loadLastTournamentSettings, saveLastTournamentSettings } from "@/lib/lastTournamentSettings";
 
-function prizeTiersToEditable(
-  tiers: ReturnType<typeof generatePrizeTiers>,
-): EditablePrizeTier[] {
-  return tiers.map((t) => ({ key: newPrizeKey(), place: t.place, percentage: t.percentage }));
-}
-
-function blindLevelsToEditable(
-  levels: ReturnType<typeof generateBlindStructure>,
-): EditableLevel[] {
-  return levels.map((l) => ({
-    key: newLevelKey(),
-    durationMinutes: Math.round(l.durationSeconds / 60),
-    smallBlind: l.smallBlind,
-    bigBlind: l.bigBlind,
-    ante: l.ante,
-    isBreak: l.isBreak,
-  }));
-}
-
-function defaultSettings(): TournamentSettingsValue {
+function presetToSettingsValue(preset: TournamentPreset): TournamentSettingsValue {
   return {
-    name: "Giải đấu Poker",
-    startingStack: 10000,
-    buyIn: 100000,
-    freeroll: false,
-    estimatedPlayers: 9,
-    levels: blindLevelsToEditable(
-      generateBlindStructure({
-        startingStack: 10000,
-        numPlayers: 9,
-        levelDurationMinutes: 15,
-        numLevels: 10,
-        breakEveryLevels: 0,
-      }),
-    ),
-    prizeTiers: prizeTiersToEditable(generatePrizeTiers(suggestedPaidPlaces(9))),
-    allowRebuys: true,
-    maxRebuys: 0,
-    rebuyChips: 10000,
-    rebuyAmount: 100000,
-    rebuyUntilLevel: 0,
-    trackPlayers: true,
-    bountyAmount: 0,
+    name: preset.name,
+    startingStack: preset.startingStack,
+    buyIn: preset.buyIn,
+    freeroll: preset.freeroll,
+    estimatedPlayers: preset.estimatedPlayers,
+    levels: preset.levels.map((l) => ({
+      key: newLevelKey(),
+      durationMinutes: Math.round(l.durationSeconds / 60),
+      smallBlind: l.smallBlind,
+      bigBlind: l.bigBlind,
+      ante: l.ante,
+      isBreak: l.isBreak,
+    })),
+    prizeTiers: preset.prizeTiers.map((t) => ({
+      key: newPrizeKey(),
+      place: t.place,
+      percentage: t.percentage,
+    })),
+    allowRebuys: preset.allowRebuys,
+    maxRebuys: preset.maxRebuys,
+    rebuyChips: preset.rebuyChips,
+    rebuyAmount: preset.rebuyAmount,
+    rebuyUntilLevel: preset.rebuyUntilLevel,
+    trackPlayers: preset.trackPlayers,
+    bountyAmount: preset.bountyAmount,
+  };
+}
+
+function settingsValueToPreset(value: TournamentSettingsValue): TournamentPreset {
+  return {
+    name: value.name,
+    startingStack: value.startingStack,
+    buyIn: value.buyIn,
+    freeroll: value.freeroll,
+    estimatedPlayers: value.estimatedPlayers,
+    levels: value.levels.map((l, index) => ({
+      index,
+      smallBlind: l.smallBlind,
+      bigBlind: l.bigBlind,
+      ante: l.ante,
+      durationSeconds: l.durationMinutes * 60,
+      isBreak: l.isBreak,
+    })),
+    prizeTiers: value.prizeTiers.map((t) => ({ place: t.place, percentage: t.percentage })),
+    allowRebuys: value.allowRebuys,
+    maxRebuys: value.maxRebuys,
+    rebuyChips: value.rebuyChips,
+    rebuyAmount: value.rebuyAmount,
+    rebuyUntilLevel: value.rebuyUntilLevel,
+    trackPlayers: value.trackPlayers,
+    bountyAmount: value.bountyAmount,
   };
 }
 
 export default function NewTournamentPage() {
   const router = useRouter();
-  const [settings, setSettings] = useState<TournamentSettingsValue>(defaultSettings);
+  const [settings, setSettings] = useState<TournamentSettingsValue>(() =>
+    presetToSettingsValue(DEFAULT_TOURNAMENT_PRESET),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Loading from localStorage must happen post-hydration to avoid SSR mismatch.
+  useEffect(() => {
+    function loadSavedSettings() {
+      setSettings(presetToSettingsValue(loadLastTournamentSettings()));
+    }
+    loadSavedSettings();
+  }, []);
 
   function patch(p: Partial<TournamentSettingsValue>) {
     setSettings((s) => ({ ...s, ...p }));
@@ -69,23 +91,30 @@ export default function NewTournamentPage() {
 
   function regenerateBlinds() {
     patch({
-      levels: blindLevelsToEditable(
-        generateBlindStructure({
-          startingStack: settings.startingStack,
-          numPlayers: settings.estimatedPlayers,
-          levelDurationMinutes: settings.levels[0]?.durationMinutes ?? 15,
-          numLevels: 10,
-          breakEveryLevels: 0,
-        }),
-      ),
+      levels: generateBlindStructure({
+        startingStack: settings.startingStack,
+        numPlayers: settings.estimatedPlayers,
+        levelDurationMinutes: settings.levels[0]?.durationMinutes ?? 15,
+        numLevels: 10,
+        breakEveryLevels: 0,
+      }).map((l) => ({
+        key: newLevelKey(),
+        durationMinutes: Math.round(l.durationSeconds / 60),
+        smallBlind: l.smallBlind,
+        bigBlind: l.bigBlind,
+        ante: l.ante,
+        isBreak: l.isBreak,
+      })),
     });
   }
 
   function regeneratePrizeTiers() {
     patch({
-      prizeTiers: prizeTiersToEditable(
-        generatePrizeTiers(suggestedPaidPlaces(settings.estimatedPlayers)),
-      ),
+      prizeTiers: generatePrizeTiers(suggestedPaidPlaces(settings.estimatedPlayers)).map((t) => ({
+        key: newPrizeKey(),
+        place: t.place,
+        percentage: t.percentage,
+      })),
     });
   }
 
@@ -124,12 +153,16 @@ export default function NewTournamentPage() {
       setBusy(false);
       return;
     }
+    saveLastTournamentSettings(settingsValueToPreset(settings));
     router.push(`/tournament/${data.tournament.id}/control`);
   }
 
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="mb-6 text-2xl font-bold">Tạo giải đấu mới</h1>
+      <p className="mb-6 text-sm text-zinc-500">
+        Cài đặt bên dưới được điền sẵn từ giải đấu gần nhất — kiểm tra lại rồi mới tạo.
+      </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <TournamentSettingsForm
           value={settings}
