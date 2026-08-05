@@ -78,9 +78,10 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
   const averageStack = activePlayers.length > 0 ? Math.round(totalChipsInPlay / activePlayers.length) : 0;
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-black text-white">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-black text-white">
+      <div className="flex min-h-full flex-col py-4">
       {/* top bar: name + utility actions */}
-      <div className="flex shrink-0 items-center justify-between px-6 pt-4">
+      <div className="flex shrink-0 items-center justify-between px-6">
         <div />
         <div className="flex items-center gap-2">
           {error && <p className="text-xs text-red-400">{error}</p>}
@@ -104,7 +105,7 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
       </div>
 
       {/* 3-column main info — center column carries the most weight */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-center gap-6 px-8 pt-4 sm:grid-cols-[1fr_1.4fr_1fr]">
+      <div className="grid flex-1 grid-cols-1 items-center gap-6 px-8 py-6 sm:grid-cols-[1fr_1.4fr_1fr]">
         {/* Left: prize pool */}
         <div className="text-left text-sm">
           {tournament.freeroll ? (
@@ -188,7 +189,7 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
       </div>
 
       {/* bottom control bar */}
-      <div className="flex shrink-0 items-center justify-center gap-3 pb-8 pt-4">
+      <div className="flex shrink-0 items-center justify-center gap-3 pt-4">
         <IconButton label="Cài đặt" onClick={() => setSettingsOpen(true)}>
           ☰
         </IconButton>
@@ -221,6 +222,7 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
         <IconButton label="Toàn màn hình" onClick={toggleFullscreen}>
           ⛶
         </IconButton>
+      </div>
       </div>
 
       {settingsOpen && (

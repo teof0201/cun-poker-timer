@@ -23,7 +23,7 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
   }, [tournament?.session.status, tournamentId, router]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-black text-white py-6">
       {status !== "connected" || !tournament || !snapshot ? (
         <p className="text-2xl text-zinc-500">
           {status === "denied" ? (error ?? "Không thể tải giải đấu") : "Đang kết nối..."}
