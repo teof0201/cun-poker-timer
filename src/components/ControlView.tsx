@@ -66,7 +66,10 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
       reopenSentRef.current = false;
       router.replace(`/tournament/${tournamentId}/control`);
     }
-  }, [tournament, wantsReopen, tournamentId, router, sendAction]);
+    // snapshot.isFinished (recomputed every 250ms by useTimerSnapshot) is a
+    // deliberate extra trigger here — belt-and-suspenders in case a single
+    // "state" socket event is ever missed, this re-checks shortly after.
+  }, [tournament, snapshot?.isFinished, wantsReopen, tournamentId, router, sendAction]);
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {

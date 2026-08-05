@@ -20,7 +20,9 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
     if (tournament?.session.status === "finished") {
       router.push(`/tournament/${tournamentId}/results`);
     }
-  }, [tournament?.session.status, tournamentId, router]);
+    // snapshot?.isFinished re-runs this check every 250ms as a safety net in
+    // case a single "state" socket event is ever missed.
+  }, [tournament?.session.status, snapshot?.isFinished, tournamentId, router]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-black text-white py-6">
