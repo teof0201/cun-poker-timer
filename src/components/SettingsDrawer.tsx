@@ -170,7 +170,7 @@ export function SettingsDrawer({
           </button>
         </div>
 
-        <TimeAdjustSlider tournament={tournament} sendAction={sendAction} />
+        <TimeAdjustSlider tournament={tournament} sendAction={sendAction} onApplied={onClose} />
 
         <div className="mb-4 flex gap-1 border-b border-black/10 dark:border-white/10">
           <TabButton active={tab === "players"} onClick={() => setTab("players")}>
@@ -209,9 +209,11 @@ export function SettingsDrawer({
 function TimeAdjustSlider({
   tournament,
   sendAction,
+  onApplied,
 }: {
   tournament: TournamentPublic;
   sendAction: (action: ControlAction) => void;
+  onApplied: () => void;
 }) {
   const level = tournament.levels[tournament.session.levelIndex];
   const maxMinutes = level ? Math.max(1, Math.round(level.durationSeconds / 60)) : 15;
@@ -228,6 +230,7 @@ function TimeAdjustSlider({
   function apply() {
     if (!canApply) return;
     sendAction({ type: "setRemainingTime", remainingSeconds: minutes * 60 });
+    onApplied();
   }
 
   return (
