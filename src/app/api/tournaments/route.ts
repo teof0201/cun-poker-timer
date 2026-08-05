@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getOwnerContext } from "@/lib/tournamentAccess";
 import { toPublicTournament } from "@/lib/serialize";
 import { createInitialSession } from "@/lib/types";
-import { generateBlindStructure } from "@/lib/blindCalculator";
-import { generatePrizeTiers, suggestedPaidPlaces } from "@/lib/prizeCalculator";
+import { tournamentSettingsSchema } from "@/lib/tournamentSettingsSchema";
 
 export async function GET() {
   const { auth, anonId } = await getOwnerContext();
@@ -18,20 +16,10 @@ export async function GET() {
   return NextResponse.json({ tournaments: tournaments.map(toPublicTournament) });
 }
 
-const schema = z.object({
-  name: z.string().min(1).max(120),
-  buyIn: z.number().min(0),
-  rebuyAmount: z.number().min(0),
-  startingStack: z.number().int().min(100),
-  levelDurationMinutes: z.number().int().min(1).max(120),
-  numLevels: z.number().int().min(1).max(60),
-  estimatedPlayers: z.number().int().min(2).max(500),
-});
-
 export async function POST(request: Request) {
   const { auth, anonId } = await getOwnerContext();
   const body = await request.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+  const parsed = tournamentSettingsSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" },
@@ -40,25 +28,30 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
-  const levels = generateBlindStructure({
-    startingStack: input.startingStack,
-    numPlayers: input.estimatedPlayers,
-    levelDurationMinutes: input.levelDurationMinutes,
-    numLevels: input.numLevels,
-  });
-  const prizeTiers = generatePrizeTiers(suggestedPaidPlaces(input.estimatedPlayers));
+  const levels = input.levels.map((l, index) => ({ ...l, index }));
 
   const tournament = await prisma.tournament.create({
     data: {
       name: input.name,
-      buyIn: input.buyIn,
-      rebuyAmount: input.rebuyAmount,
+      buyIn: input.freeroll ? 0 : input.buyIn,
+      freeroll: input.freeroll,
       startingStack: input.startingStack,
       levels: JSON.stringify(levels),
-      prizeTiers: JSON.stringify(prizeTiers),
+      prizeTiers: JSON.stringify(input.prizeTiers),
       session: JSON.stringify(createInitialSession()),
       ownerUserId: auth?.userId ?? null,
       ownerAnonId: auth ? null : anonId,
+
+      allowRebuys: input.allowRebuys,
+      maxRebuys: input.maxRebuys,
+      rebuyChips: input.rebuyChips,
+      rebuyAmount: input.rebuyAmount,
+      rebuyUntilLevel: input.rebuyUntilLevel,
+
+      trackPlayers: input.trackPlayers,
+      bountyAmount: input.bountyAmount,
+
+      estimatedPlayers: input.estimatedPlayers,
     },
   });
 

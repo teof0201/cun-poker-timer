@@ -56,18 +56,35 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
               </strong>{" "}
               / {tournament.session.players.length}
             </span>
-            <span>
-              Quỹ giải thưởng:{" "}
-              <strong className="text-white">
-                {calculatePrizePool(
-                  tournament.session.players.length,
-                  tournament.buyIn,
-                  tournament.session.players.reduce((sum, p) => sum + p.rebuys, 0),
-                  tournament.rebuyAmount,
-                ).toLocaleString("vi-VN")}{" "}
-                đ
-              </strong>
-            </span>
+            {tournament.freeroll ? (
+              <span>
+                <strong className="text-white">Freeroll</strong>
+              </span>
+            ) : (
+              <span>
+                Quỹ giải thưởng:{" "}
+                <strong className="text-white">
+                  {calculatePrizePool(
+                    tournament.session.players.length,
+                    tournament.buyIn,
+                    tournament.session.players.reduce((sum, p) => sum + p.rebuys, 0),
+                    tournament.rebuyAmount,
+                  ).toLocaleString("vi-VN")}{" "}
+                  đ
+                </strong>
+              </span>
+            )}
+            {tournament.bountyAmount > 0 && (
+              <span>
+                Bounty:{" "}
+                <strong className="text-white">
+                  {(tournament.bountyAmount * tournament.session.players.length).toLocaleString(
+                    "vi-VN",
+                  )}{" "}
+                  đ
+                </strong>
+              </span>
+            )}
           </div>
 
           {snapshot.status === "paused" && (

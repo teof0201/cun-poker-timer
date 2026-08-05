@@ -46,5 +46,13 @@ export function useTournamentSocket(tournamentId: string, role: "controller" | "
     });
   }
 
-  return { tournament, status, error, sendAction };
+  function refresh() {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit("refresh", { tournamentId }, (result: { ok: boolean; error?: string }) => {
+      if (!result.ok) setError(result.error ?? "Không thể làm mới dữ liệu");
+    });
+  }
+
+  return { tournament, status, error, sendAction, refresh };
 }

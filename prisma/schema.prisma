@@ -19,7 +19,7 @@ model Tournament {
   id            String   @id @default(cuid())
   name          String
   buyIn         Float    @default(0)
-  rebuyAmount   Float    @default(0)
+  freeroll      Boolean  @default(false)
   startingStack Int      @default(10000)
   levels        String // JSON-serialized BlindLevel[]
   prizeTiers    String // JSON-serialized PrizeTier[]
@@ -28,6 +28,20 @@ model Tournament {
   ownerAnonId   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  // Re-entry / rebuy
+  allowRebuys     Boolean @default(true)
+  maxRebuys       Int     @default(0) // 0 = unlimited
+  rebuyChips      Int     @default(10000)
+  rebuyAmount     Float   @default(0)
+  rebuyUntilLevel Int     @default(0) // 0 = no cutoff, allowed the whole tournament
+
+  // Track players & bounties
+  trackPlayers Boolean @default(true)
+  bountyAmount Float   @default(0)
+
+  // Used to regenerate blind/prize suggestions when settings are edited
+  estimatedPlayers Int @default(9)
 
   owner User? @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
 

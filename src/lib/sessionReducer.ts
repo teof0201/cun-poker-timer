@@ -2,12 +2,20 @@ import { randomUUID } from "crypto";
 import { applyAction as applyTimingAction } from "./timerEngine";
 import type { BlindLevel, ControlAction, Player, SessionState } from "./types";
 
+export type SessionReducerConfig = {
+  levels: BlindLevel[];
+  maxRebuys: number; // 0 = unlimited
+  rebuyUntilLevel: number; // 0 = no cutoff
+};
+
 export function reduceSession(
-  levels: BlindLevel[],
+  config: SessionReducerConfig,
   session: SessionState,
   action: ControlAction,
   now: number,
 ): SessionState {
+  const { levels, maxRebuys, rebuyUntilLevel } = config;
+
   switch (action.type) {
     case "start":
     case "pause":
@@ -18,8 +26,7 @@ export function reduceSession(
       return applyTimingAction(levels, session, action, now);
 
     case "addPlayer": {
-      const name = action.name.trim();
-      if (!name) return session;
+      const name = action.name?.trim() || `Người chơi ${session.players.length + 1}`;
       const player: Player = {
         id: randomUUID(),
         name,
@@ -46,9 +53,14 @@ export function reduceSession(
         updatedAt: now,
       };
 
-    case "rebuyPlayer":
+    case "rebuyPlayer": {
       // Rebuying immediately buys the player back into the tournament —
       // no confirmation, no re-entering the amount (fixed at tournament setup).
+      const player = session.players.find((p) => p.id === action.playerId);
+      if (!player) return session;
+      if (maxRebuys > 0 && player.rebuys >= maxRebuys) return session;
+      if (rebuyUntilLevel > 0 && session.levelIndex >= rebuyUntilLevel) return session;
+
       return {
         ...session,
         players: session.players.map((p) =>
@@ -58,6 +70,7 @@ export function reduceSession(
         ),
         updatedAt: now,
       };
+    }
 
     default:
       return session;

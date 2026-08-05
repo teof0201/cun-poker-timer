@@ -93,7 +93,11 @@ app.prepare().then(() => {
         const levels = JSON.parse(tournament.levels);
         const session = JSON.parse(tournament.session);
         const nextSession = reduceSession(
-          levels,
+          {
+            levels,
+            maxRebuys: tournament.maxRebuys,
+            rebuyUntilLevel: tournament.rebuyUntilLevel,
+          },
           session,
           payload.action as ControlAction,
           Date.now(),
@@ -108,6 +112,29 @@ app.prepare().then(() => {
         ack?.({ ok: true });
       } catch (err) {
         console.error("[socket:action] error", err);
+        ack?.({ ok: false, error: "Lỗi máy chủ" });
+      }
+    });
+
+    socket.on("refresh", async (payload, ack) => {
+      try {
+        if (socket.data.tournamentId !== payload.tournamentId) {
+          ack?.({ ok: false, error: "Không có quyền" });
+          return;
+        }
+
+        const tournament = await prisma.tournament.findUnique({
+          where: { id: payload.tournamentId },
+        });
+        if (!tournament) {
+          ack?.({ ok: false, error: "Không tìm thấy giải đấu" });
+          return;
+        }
+
+        io.to(`tournament:${payload.tournamentId}`).emit("state", toPublicTournament(tournament));
+        ack?.({ ok: true });
+      } catch (err) {
+        console.error("[socket:refresh] error", err);
         ack?.({ ok: false, error: "Lỗi máy chủ" });
       }
     });

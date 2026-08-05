@@ -39,10 +39,21 @@ export type TournamentConfig = {
   id: string;
   name: string;
   buyIn: number;
-  rebuyAmount: number;
+  freeroll: boolean;
   startingStack: number;
   levels: BlindLevel[];
   prizeTiers: PrizeTier[];
+
+  allowRebuys: boolean;
+  maxRebuys: number; // 0 = unlimited
+  rebuyChips: number;
+  rebuyAmount: number;
+  rebuyUntilLevel: number; // 0 = no cutoff
+
+  trackPlayers: boolean;
+  bountyAmount: number;
+
+  estimatedPlayers: number;
 };
 
 export type TournamentPublic = TournamentConfig & {
@@ -67,7 +78,7 @@ export type ControlAction =
   | { type: "next" }
   | { type: "prev" }
   | { type: "reset" }
-  | { type: "addPlayer"; name: string }
+  | { type: "addPlayer"; name?: string }
   | { type: "eliminatePlayer"; playerId: string }
   | { type: "removePlayer"; playerId: string }
   | { type: "rebuyPlayer"; playerId: string };
