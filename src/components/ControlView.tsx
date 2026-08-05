@@ -41,19 +41,30 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
   // second source of truth racing the server caused levels to double-skip.
 
   useEffect(() => {
-    if (!tournament || tournament.session.status !== "finished") return;
+    if (!tournament) return;
 
-    // Arrived via the results page's "sửa kết quả" link: un-finish instead
-    // of bouncing straight back to /results, so a mistaken final elimination
-    // can be corrected (undoBust) before the tournament re-finishes for real.
-    if (wantsReopen && !reopenSentRef.current) {
-      reopenSentRef.current = true;
-      sendAction({ type: "reopen" });
-      router.replace(`/tournament/${tournamentId}/control`);
+    if (tournament.session.status === "finished") {
+      // Arrived via the results page's "sửa kết quả" link: un-finish instead
+      // of bouncing straight back to /results, so a mistaken final
+      // elimination can be corrected (undoBust) before the tournament
+      // re-finishes for real. Keep the ?reopen=1 marker in the URL until the
+      // server actually confirms the switch away from "finished" — the
+      // socket round-trip isn't instant, and clearing it any earlier races
+      // this same effect into redirecting to /results before reopen lands.
+      if (wantsReopen) {
+        if (!reopenSentRef.current) {
+          reopenSentRef.current = true;
+          sendAction({ type: "reopen" });
+        }
+        return;
+      }
+      router.push(`/tournament/${tournamentId}/results`);
       return;
     }
-    if (!wantsReopen) {
-      router.push(`/tournament/${tournamentId}/results`);
+
+    if (reopenSentRef.current) {
+      reopenSentRef.current = false;
+      router.replace(`/tournament/${tournamentId}/control`);
     }
   }, [tournament, wantsReopen, tournamentId, router, sendAction]);
 
