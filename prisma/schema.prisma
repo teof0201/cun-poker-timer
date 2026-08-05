@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime     @default(now())
+  tournaments  Tournament[]
+}
+
+model Tournament {
+  id            String   @id @default(cuid())
+  name          String
+  buyIn         Float    @default(0)
+  rebuyAmount   Float    @default(0)
+  startingStack Int      @default(10000)
+  levels        String // JSON-serialized BlindLevel[]
+  prizeTiers    String // JSON-serialized PrizeTier[]
+  session       String // JSON-serialized SessionState
+  ownerUserId   String?
+  ownerAnonId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner User? @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@index([ownerAnonId])
+}
