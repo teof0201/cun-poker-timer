@@ -142,6 +142,7 @@ export function applyAction(
     | { type: "next" }
     | { type: "prev" }
     | { type: "reset" }
+    | { type: "reopen" }
     | { type: "setRemainingTime"; remainingSeconds: number },
   now: number,
 ): SessionState {
@@ -227,6 +228,22 @@ export function applyAction(
         updatedAt: now,
         tournamentStartedAt: null,
         finishedAt: null,
+      };
+    }
+    case "reopen": {
+      // Un-finishes a tournament so a mistaken elimination near the end can
+      // be corrected (via undoBust) before it's re-finished for real. Lands
+      // on "paused" at 0:00 for the current level rather than guessing what
+      // the clock should read — use the time slider afterward if play is
+      // meant to actually continue.
+      if (session.status !== "finished") return session;
+      return {
+        ...session,
+        status: "paused",
+        levelStartedAt: null,
+        remainingMsAtPause: 0,
+        finishedAt: null,
+        updatedAt: now,
       };
     }
     case "setRemainingTime": {

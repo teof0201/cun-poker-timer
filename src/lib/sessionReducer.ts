@@ -23,6 +23,7 @@ export function reduceSession(
     case "next":
     case "prev":
     case "reset":
+    case "reopen":
     case "setRemainingTime":
       return applyTimingAction(levels, session, action, now);
 

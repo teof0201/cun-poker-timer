@@ -5,6 +5,7 @@ import { toPublicTournament } from "@/lib/serialize";
 import { computeTournamentResults, formatDuration } from "@/lib/tournamentResults";
 import { formatMoney } from "@/lib/formatMoney";
 import { PrintButton } from "@/components/PrintButton";
+import { canAccessTournament, getOwnerContext } from "@/lib/tournamentAccess";
 
 function formatFinishedAt(ms: number) {
   return new Date(ms).toLocaleString("vi-VN", {
@@ -28,6 +29,9 @@ export default async function ResultsPage({
   const tournament = toPublicTournament(row);
   const { rows, prizePool, totalEntries, durationMs } = computeTournamentResults(tournament);
   const winner = rows[0];
+
+  const { auth, anonId } = await getOwnerContext();
+  const isOwner = canAccessTournament(row, auth, anonId);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 print:py-0">
@@ -140,6 +144,14 @@ export default async function ResultsPage({
         >
           Về danh sách giải đấu
         </Link>
+        {isOwner && (
+          <Link
+            href={`/tournament/${tournament.id}/control?reopen=1`}
+            className="rounded-full bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
+          >
+            Sửa kết quả
+          </Link>
+        )}
         <PrintButton />
       </div>
     </div>

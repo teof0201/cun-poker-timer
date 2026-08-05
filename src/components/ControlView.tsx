@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTournamentSocket } from "@/hooks/useTournamentSocket";
 import { useTimerSnapshot } from "@/hooks/useTimerSnapshot";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -17,6 +17,9 @@ function formatBlinds(level: BlindLevel) {
 
 export function ControlView({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wantsReopen = searchParams.get("reopen") === "1";
+  const reopenSentRef = useRef(false);
   const { tournament, status, error, sendAction, refresh } = useTournamentSocket(
     tournamentId,
     "controller",
@@ -38,10 +41,21 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
   // second source of truth racing the server caused levels to double-skip.
 
   useEffect(() => {
-    if (tournament?.session.status === "finished") {
+    if (!tournament || tournament.session.status !== "finished") return;
+
+    // Arrived via the results page's "sửa kết quả" link: un-finish instead
+    // of bouncing straight back to /results, so a mistaken final elimination
+    // can be corrected (undoBust) before the tournament re-finishes for real.
+    if (wantsReopen && !reopenSentRef.current) {
+      reopenSentRef.current = true;
+      sendAction({ type: "reopen" });
+      router.replace(`/tournament/${tournamentId}/control`);
+      return;
+    }
+    if (!wantsReopen) {
       router.push(`/tournament/${tournamentId}/results`);
     }
-  }, [tournament?.session.status, tournamentId, router]);
+  }, [tournament, wantsReopen, tournamentId, router, sendAction]);
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {
