@@ -1,80 +1,83 @@
-# Đưa CUN Poker Timer lên cun.poker.vn
+# Đưa CUN Poker Timer lên cun.poker.vn (miễn phí)
 
-App này có 2 điểm cần lưu ý khi chọn nơi host:
+App này cần 1 nơi chạy được **Node.js server liên tục** (không phải static
+site) vì dùng WebSocket (Socket.IO) để đồng bộ nhiều màn hình real-time —
+Vercel/Netlify không phù hợp.
 
-1. Nó chạy **server Node.js riêng** (không phải static site) vì cần WebSocket
-   (Socket.IO) để đồng bộ nhiều màn hình real-time. Vercel/Netlify (dành cho
-   site tĩnh/serverless) **không phù hợp**. Cần một nơi chạy được Node.js
-   liên tục 24/7.
-2. Database mặc định là SQLite (1 file `dev.db`) — đơn giản, đủ dùng cho quy
-   mô sòng nhà/sự kiện nhỏ. File này cần được lưu ở ổ đĩa "bền" (persistent),
-   không bị xóa mỗi lần deploy lại.
+**Hướng A (free 100%) dùng Render.com.** Có 1 điều cần biết trước:
 
-Có 2 hướng, chọn 1:
+> Gói free của Render **không giữ ổ đĩa vĩnh viễn** — mỗi lần deploy code mới
+> (khi tao cập nhật tính năng sau này), file database SQLite sẽ reset về
+> rỗng. Việc này **không** xảy ra giữa lúc đang chơi (chỉ khi có bản deploy
+> mới), nên không ảnh hưởng một ván đang chạy — chỉ mất lịch sử các giải đấu
+> cũ. Nếu sau này mày muốn dữ liệu bền vĩnh viễn, có thể nâng cấp sang
+> database ngoài (Supabase, free) — báo tao lúc đó.
 
 ---
 
-## Hướng A — Railway.app (khuyên dùng, dễ nhất, không cần biết SSH/Linux)
+## Hướng A — Render.com (free, khuyên dùng)
 
 ### Bước 1: Đưa code lên GitHub
 
 1. Tạo tài khoản GitHub (nếu chưa có): https://github.com/signup
-2. Tạo 1 repo mới (ví dụ tên `cun-poker-timer`), để **Private** cũng được.
-3. Trong thư mục project, chạy các lệnh sau (thay `<URL_REPO>` bằng URL repo
-   GitHub mày vừa tạo):
+2. Tạo 1 repo mới (ví dụ tên `cun-poker-timer`), Private cũng được, **để
+   trống** (không tick thêm README/gitignore).
+3. GitHub sẽ cho mày 1 URL dạng `https://github.com/<user>/cun-poker-timer.git`.
+   Trong thư mục project, chạy:
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
 git remote add origin <URL_REPO>
 git push -u origin main
 ```
 
-### Bước 2: Tạo project trên Railway
+(Code đã được `git init` + commit sẵn từ trước, mày chỉ cần 2 lệnh trên.)
 
-1. Tạo tài khoản tại https://railway.app (đăng nhập bằng GitHub luôn cho tiện).
-2. Bấm **New Project** → **Deploy from GitHub repo** → chọn repo vừa push.
-3. Railway tự nhận diện đây là app Node.js.
-4. Vào tab **Variables** của service, thêm 2 biến môi trường:
-   - `DATABASE_URL` = `file:./data/prod.db`
-   - `JWT_SECRET` = một chuỗi ngẫu nhiên dài, bí mật (xem cách tạo ở cuối file)
-5. Vào tab **Settings**:
-   - **Build Command**: `npm run build`
+### Bước 2: Tạo Web Service trên Render
+
+1. Tạo tài khoản tại https://render.com (đăng nhập bằng GitHub cho tiện —
+   Render sẽ tự thấy repo của mày).
+2. Bấm **New** → **Web Service** → chọn repo `cun-poker-timer`.
+3. Điền:
+   - **Name**: `cun-poker-timer` (tùy ý)
+   - **Region**: Singapore (gần Việt Nam nhất)
+   - **Branch**: `main`
+   - **Build Command**: `npm install && npx prisma migrate deploy && npm run build`
    - **Start Command**: `npm start`
-6. Vào tab **Volumes** (rất quan trọng — nếu bỏ qua, dữ liệu giải đấu sẽ mất
-   mỗi lần Railway deploy lại):
-   - Tạo 1 volume, mount vào path `/app/data`
-   - Việc này giữ file database `prod.db` không bị xóa.
-7. Trước khi lần đầu chạy, cần áp migration cho DB. Vào tab **Settings** →
-   thêm vào "Deploy" một lệnh chạy 1 lần, hoặc đơn giản nhất: mở tab
-   **Shell/Console** của Railway (nếu có) và chạy:
-   ```bash
-   npx prisma migrate deploy
-   ```
-   Hoặc thêm vào Start Command thành:
-   `npx prisma migrate deploy && npm start`
+   - **Instance Type**: **Free**
+4. Mục **Environment Variables**, thêm:
+   - `DATABASE_URL` = `file:./prod.db`
+   - `JWT_SECRET` = chuỗi bí mật (cách tạo ở cuối file)
+   - `NODE_ENV` = `production`
+5. Bấm **Create Web Service**. Lần build đầu mất vài phút — theo dõi log,
+   nếu xong sẽ có link dạng `https://cun-poker-timer.onrender.com`.
 
 ### Bước 3: Gắn domain cun.poker.vn
 
-1. Trong Railway, vào tab **Settings** → **Networking** → **Custom Domain**.
-2. Nhập `cun.poker.vn`, Railway sẽ cho một giá trị CNAME (dạng
-   `xxxxx.up.railway.app`).
-3. Vào nơi quản lý DNS của domain `poker.vn` (thường là chỗ mày đã mua domain
-   — Nếu không nhớ, kiểm tra email lúc mua domain hoặc hỏi ai đứng tên mua).
-4. Thêm 1 bản ghi DNS mới:
+1. Trong Render, vào tab **Settings** → **Custom Domain** → **Add Custom
+   Domain** → nhập `cun.poker.vn`.
+2. Render đưa ra 1 giá trị CNAME (dạng `cun-poker-timer.onrender.com`).
+3. Vào nơi quản lý DNS của domain `poker.vn` (chỗ mày đã mua domain — kiểm
+   tra email lúc mua nếu không nhớ), thêm bản ghi:
    - Loại: `CNAME`
    - Tên/Host: `cun`
-   - Giá trị/Đích: giá trị Railway vừa đưa (`xxxxx.up.railway.app`)
-   - TTL: để mặc định
-5. Đợi 5–30 phút để DNS lan truyền. Railway sẽ tự cấp SSL (HTTPS) cho domain.
+   - Giá trị/Đích: giá trị Render vừa đưa
+   - TTL: mặc định
+4. Đợi 5–30 phút để DNS lan truyền. Render tự cấp SSL (HTTPS) miễn phí.
 
-Xong — `https://cun.poker.vn` sẽ chạy app.
+Xong — `https://cun.poker.vn` chạy được, ai vào cũng dùng miễn phí, không
+cần tài khoản.
+
+### Lưu ý khi dùng gói Free
+
+- Nếu không ai truy cập trong ~15 phút, server "ngủ". Lượt truy cập tiếp
+  theo mất khoảng 30–60 giây để "thức dậy" — chỉ ảnh hưởng lần tải trang
+  đầu, sau đó chạy bình thường suốt buổi chơi.
+- Trước mỗi buổi chơi quan trọng, nên mở thử trang trước ~1 phút để server
+  "thức dậy" sẵn.
 
 ---
 
-## Hướng B — VPS riêng (nếu đã có sẵn VPS Ubuntu)
+## Hướng B — VPS riêng (nếu đã có sẵn VPS, không free nhưng không bị ngủ)
 
 Cần: 1 VPS Ubuntu 22.04+, đã có IP, đã SSH vào được.
 
@@ -147,8 +150,7 @@ Vào nơi quản lý DNS của `poker.vn`, thêm bản ghi:
 
 ## Tạo JWT_SECRET an toàn
 
-Chạy lệnh này (trên máy mày hoặc trên VPS) và dán kết quả vào biến
-`JWT_SECRET`:
+Chạy lệnh này (trên máy mày) và dán kết quả vào biến `JWT_SECRET`:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
@@ -163,6 +165,6 @@ file `.env` local khi lên production.
 
 - Test bằng cách tạo 1 giải đấu, mở link `/control` trên máy mày và link
   `/display` trên một thiết bị khác (điện thoại/TV) — xác nhận đồng bộ real-time.
-- Cân nhắc backup định kỳ file database (SQLite) nếu giải đấu quan trọng.
-- Nếu sau này cần scale (nhiều giải đấu đồng thời, nhiều người dùng), cân
-  nhắc chuyển `DATABASE_URL` sang Postgres (Railway có Postgres addon 1 click).
+- Nếu sau này muốn dữ liệu không bao giờ mất khi deploy lại, báo tao chuyển
+  `DATABASE_URL` sang Supabase Postgres (free, không hết hạn) — chỉ cần đổi
+  connection string, không mất tính năng nào.
