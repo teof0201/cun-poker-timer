@@ -20,6 +20,7 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
     snapshot,
     tournament?.session.levelStartedAt ?? null,
     beepPlayer.play,
+    beepPlayer.playLong,
   );
 
   useWakeLock();
@@ -130,6 +131,13 @@ export function DisplayView({ tournamentId }: { tournamentId: string }) {
             <p className="mt-8 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">GIẢI ĐẤU KẾT THÚC</p>
           )}
         </>
+      )}
+
+      {isWarning && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundColor: "var(--timer-warning-overlay)" }}
+        />
       )}
     </div>
   );

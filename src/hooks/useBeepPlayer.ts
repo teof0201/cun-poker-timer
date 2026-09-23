@@ -82,5 +82,30 @@ export function useBeepPlayer() {
     osc.stop(now + 0.18);
   }, [enabled, unlock]);
 
-  return { enabled, setEnabled, play, unlock };
+  const playLong = useCallback(() => {
+    if (!enabled) return;
+    unlock();
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    // Single sustained tone for the "level ended" (00:00) moment — same pitch
+    // as the short countdown ticks, just held longer so it clearly reads as a
+    // distinct "time's up" signal. Kept well under 1s so it doesn't linger
+    // into the next level once the level has already switched.
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, now);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.setValueAtTime(0.22, now + 0.45);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.57);
+  }, [enabled, unlock]);
+
+  return { enabled, setEnabled, play, playLong, unlock };
 }

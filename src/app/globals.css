@@ -6,6 +6,8 @@
   /* Countdown "last 5 seconds" warning color for the timer screens.
      red-600 — readable on a light/white background. */
   --timer-warning: #dc2626;
+  /* Full-screen warning tint — translucent so text/buttons underneath stay legible. */
+  --timer-warning-overlay: rgba(220, 38, 38, 0.14);
 }
 
 @theme inline {
@@ -21,6 +23,7 @@
     --foreground: #ededed;
     /* red-400 — softer and still high-contrast against a black background. */
     --timer-warning: #f87171;
+    --timer-warning-overlay: rgba(248, 113, 113, 0.18);
   }
 }
 

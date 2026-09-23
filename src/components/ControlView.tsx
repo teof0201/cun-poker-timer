@@ -32,6 +32,7 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
     snapshot,
     tournament?.session.levelStartedAt ?? null,
     beepPlayer.play,
+    beepPlayer.playLong,
   );
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -281,6 +282,13 @@ export function ControlView({ tournamentId }: { tournamentId: string }) {
         </IconButton>
       </div>
       </div>
+
+      {isWarning && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundColor: "var(--timer-warning-overlay)" }}
+        />
+      )}
 
       {settingsOpen && (
         <SettingsDrawer
