@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Countdown "last 5 seconds" warning color for the timer screens.
+     red-600 — readable on a light/white background. */
+  --timer-warning: #dc2626;
 }
 
 @theme inline {
@@ -16,6 +19,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    /* red-400 — softer and still high-contrast against a black background. */
+    --timer-warning: #f87171;
   }
 }
 
